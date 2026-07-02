@@ -40,7 +40,7 @@ ARG ANSIBLE_CORE_VERSION=2.21.1
 # update-github-secrets) + the OCI SDK are pulled in via this pip-installable
 # package (it pins oci==2.181.0 + cryptography). Bump this to the git tag/branch
 # you want baked into the image.
-ARG GYWADMIN_OCI_VERSION=v0.1.0
+ARG GYWADMIN_OCI_VERSION=0.1.1
 
 # --- Stage 1: fetch the static CLIs for the target arch ----------------------
 FROM --platform=$BUILDPLATFORM alpine:3.19 AS tools
