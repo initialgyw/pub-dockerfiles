@@ -1,36 +1,46 @@
+# VERSION=1.13.5
 # syntax=docker/dockerfile:1
 #
 # ansible-talos — the credential-injecting container image that runs the Talos
 # automation. It bundles ansible-core + talosctl (PINNED to the cluster's Talos
-# version) + kubectl + helm + the OCI Python SDK, and copies the OCI Vault helper
-# CLI (misc-scripts/oci/manage-vault.py + _oci_common.py) so the playbooks can
-# read/write cluster state (secrets.yaml, talosconfig, kubeconfig) to OCI Vault.
+# version) + kubectl + helm + the gywadmin-oci package, which provides the OCI
+# Vault helper CLIs (manage-vault / initialize-oci / update-github-secrets) and
+# pulls in the OCI Python SDK, so the playbooks can read/write cluster state
+# (secrets.yaml, talosconfig, kubeconfig) to OCI Vault.
+#
+# The OCI helpers used to be COPY'd out of the gywadmin-homelab repo (which
+# forced the build context to be that repo's root). They now live in the
+# standalone public package github.com/initialgyw/gywadmin-oci and are pip
+# installed at build time (pinned via GYWADMIN_OCI_VERSION), so this image no
+# longer depends on the homelab repo — nothing is COPY'd from the build context,
+# so the context can be anything (e.g. the pub-dockerfiles root).
 #
 # Intended tag:  ghcr.io/initialgyw/ansible-talos:1.13.5  (== the Talos version)
 # Multi-arch:    built for linux/arm64 (Apple-Silicon host) and linux/amd64.
 #
 # Build (single-arch, local Apple-Silicon):
 #   docker build -t ghcr.io/initialgyw/ansible-talos:1.13.5 \
-#     -f Dockerfile .
+#     -f ansible-talos/Dockerfile .
 #
 # Build (multi-arch, push):
 #   docker buildx build --platform linux/arm64,linux/amd64 \
 #     -t ghcr.io/initialgyw/ansible-talos:1.13.5 \
-#     -f Dockerfile --push .
+#     -f ansible-talos/Dockerfile --push .
 #
-# NOTE: the build context MUST be the repo root (so the COPY lines below can
-# reach misc-scripts/oci/). The misc-scripts/ansible-talos.py wrapper always
-# invokes this image with the repo mounted at /workspace, so the COPY is a
-# convenience fallback (an in-container copy of the helper independent of the
-# mount); the playbooks call the helper via the mounted /workspace path by
-# default (see group_vars: manage_vault_cmd).
+# The misc-scripts/ansible-talos.py wrapper invokes this image with the homelab
+# repo mounted at /workspace; the playbooks call the Vault helper via the
+# `manage-vault` console script on PATH (see group_vars: manage_vault_cmd).
 
 # --- Pinned tool versions ----------------------------------------------------
 ARG TALOSCTL_VERSION=v1.13.5
 ARG KUBECTL_VERSION=v1.36.2
 ARG HELM_VERSION=v3.21.2
 ARG ANSIBLE_CORE_VERSION=2.21.1
-ARG OCI_SDK_VERSION=2.181.0
+# gywadmin-oci: the OCI Vault helper CLIs (manage-vault / initialize-oci /
+# update-github-secrets) + the OCI SDK are pulled in via this pip-installable
+# package (it pins oci==2.181.0 + cryptography). Bump this to the git tag/branch
+# you want baked into the image.
+ARG GYWADMIN_OCI_VERSION=v0.1.0
 
 # --- Stage 1: fetch the static CLIs for the target arch ----------------------
 FROM --platform=$BUILDPLATFORM alpine:3.19 AS tools
@@ -60,45 +70,39 @@ RUN curl -fsSL -o helm.tar.gz \
 # --- Stage 2: the runtime image ----------------------------------------------
 FROM python:3.12-alpine AS runtime
 ARG ANSIBLE_CORE_VERSION
-ARG OCI_SDK_VERSION
+ARG GYWADMIN_OCI_VERSION
 
 # ca-certificates is required for talosctl/kubectl/helm TLS and OCI SDK HTTPS.
 # Added libffi for python cryptography wheel support (if needed by ansible/oci)
 RUN apk add --no-cache ca-certificates libffi
 
-# Python deps: ansible-core (the playbook engine) + the OCI SDK and its friends
-# that manage-vault.py / _oci_common.py import (oci, cryptography, pyyaml).
-# We install build dependencies temporarily to compile any native extensions
-# (like cryptography/pyyaml) if pre-built musllinux wheels aren't available.
-RUN apk add --no-cache --virtual .build-deps \
-        gcc \
-        musl-dev \
-        libffi-dev \
-        openssl-dev \
-        cargo \
+# Python deps: ansible-core (the playbook engine) + pyyaml (ansible-core needs
+# it) + the gywadmin-oci package, which provides the manage-vault / initialize-oci
+# / update-github-secrets console scripts and pulls in its own pinned deps
+# (oci==2.181.0, cryptography) transitively. oci/cryptography/pyyaml all ship
+# prebuilt musllinux cp312 wheels, so no compiler toolchain is needed — only a
+# transient `git` for pip's git+https clone of the gywadmin-oci package.
+RUN apk add --no-cache --virtual .fetch-deps git \
     && pip install --no-cache-dir \
       "ansible-core==${ANSIBLE_CORE_VERSION}" \
-      "oci==${OCI_SDK_VERSION}" \
-      "cryptography>=42.0.0" \
       "pyyaml>=6.0.0" \
-    && apk del .build-deps
+      "gywadmin-oci @ git+https://github.com/initialgyw/gywadmin-oci.git@${GYWADMIN_OCI_VERSION}" \
+    && apk del .fetch-deps
 
 # The pinned CLIs from stage 1.
 COPY --from=tools /out/talosctl /usr/local/bin/talosctl
 COPY --from=tools /out/kubectl /usr/local/bin/kubectl
 COPY --from=tools /out/helm /usr/local/bin/helm
 
-# The OCI Vault helper CLI + its shared library. Copied to a stable in-container
-# path so the image can run manage-vault.py even without the repo mount; the
-# playbooks default to the mounted /workspace copy (manage_vault_cmd).
-COPY misc-scripts/oci/manage-vault.py /opt/oci/manage-vault.py
-COPY misc-scripts/oci/_oci_common.py /opt/oci/_oci_common.py
-RUN chmod 0755 /opt/oci/manage-vault.py
+# The OCI Vault helper CLIs come from the pip-installed gywadmin-oci package
+# (installed above): manage-vault / initialize-oci / update-github-secrets are on
+# PATH at /usr/local/bin. The playbooks invoke `manage-vault` directly (see
+# group_vars: manage_vault_cmd) — no in-image COPY of the helper is needed.
 
 WORKDIR /workspace/ansible
 
 # Entrypoint runs ansible-playbook by default. Override the entrypoint to run
 # the Vault helper directly, e.g.:
-#   docker run --rm --entrypoint python3 <image> /opt/oci/manage-vault.py list-secrets
+#   docker run --rm --entrypoint manage-vault <image> list-secrets
 ENTRYPOINT ["ansible-playbook"]
 CMD ["--version"]

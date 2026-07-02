@@ -1,3 +1,4 @@
+# VERSION=3.22.2
 FROM alpine:3.22.2
 
 LABEL org.opencontainers.image.source=https://github.com/initialgyw/pub-dockerfiles
