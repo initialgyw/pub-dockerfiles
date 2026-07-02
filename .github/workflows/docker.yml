@@ -1,0 +1,114 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  detect-changes:
+    name: Detect Changed Components
+    runs-on: ubuntu-latest
+    outputs:
+      components: ${{ steps.set-matrix.outputs.components }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            git:
+              - 'git/**'
+            opentofu:
+              - 'opentofu/**'
+            ansible-talos:
+              - 'ansible-talos/**'
+
+      - name: Build component matrix
+        id: set-matrix
+        env:
+          GIT_CHANGED: ${{ steps.filter.outputs.git }}
+          OPENTOFU_CHANGED: ${{ steps.filter.outputs.opentofu }}
+          ANSIBLE_TALOS_CHANGED: ${{ steps.filter.outputs.ansible-talos }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            components='["git", "opentofu", "ansible-talos"]'
+          else
+            components="$(
+              {
+                [[ "${GIT_CHANGED}" == "true" ]] && printf '%s\n' "git"
+                [[ "${OPENTOFU_CHANGED}" == "true" ]] && printf '%s\n' "opentofu"
+                [[ "${ANSIBLE_TALOS_CHANGED}" == "true" ]] && printf '%s\n' "ansible-talos"
+                true
+              } | jq --raw-input . | jq --slurp --compact-output .
+            )"
+          fi
+
+          echo "components=${components}" >> "${GITHUB_OUTPUT}"
+          echo "Components to build: ${components}"
+
+  build:
+    name: Build ${{ matrix.component }}
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.components != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(needs.detect-changes.outputs.components) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Image Version
+        id: image-version
+        run: |
+          set -euo pipefail
+          version="$(head -n 1 ${{ matrix.component }}/Dockerfile | grep -oE '^# *VERSION=[^ ]+' | cut -d= -f2 || true)"
+          if [[ -z "${version}" ]]; then
+            echo "Failed to extract VERSION from ${{ matrix.component }}/Dockerfile" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "Extracted version: ${version}"
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.component }}
+          file: ${{ matrix.component }}/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.component }}:${{ steps.image-version.outputs.version }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}

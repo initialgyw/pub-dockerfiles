@@ -1,3 +1,4 @@
+# VERSION=1.12.0
 FROM ghcr.io/opentofu/opentofu:1.12.0-minimal AS tofu
 
 FROM alpine:3.23.4
