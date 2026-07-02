@@ -3,7 +3,7 @@
 #
 # ansible-talos — the credential-injecting container image that runs the Talos
 # automation. It bundles ansible-core + talosctl (PINNED to the cluster's Talos
-# version) + kubectl + helm + the gywadmin-oci package, which provides the OCI
+# version) + the gywadmin-oci package, which provides the OCI
 # Vault helper CLIs (manage-vault / initialize-oci / update-github-secrets) and
 # pulls in the OCI Python SDK, so the playbooks can read/write cluster state
 # (secrets.yaml, talosconfig, kubeconfig) to OCI Vault.
@@ -33,8 +33,6 @@
 
 # --- Pinned tool versions ----------------------------------------------------
 ARG TALOSCTL_VERSION=v1.13.5
-ARG KUBECTL_VERSION=v1.36.2
-ARG HELM_VERSION=v3.21.2
 ARG ANSIBLE_CORE_VERSION=2.21.1
 # gywadmin-oci: the OCI Vault helper CLIs (manage-vault / initialize-oci /
 # update-github-secrets) + the OCI SDK are pulled in via this pip-installable
@@ -45,8 +43,6 @@ ARG GYWADMIN_OCI_VERSION=0.1.1
 # --- Stage 1: fetch the static CLIs for the target arch ----------------------
 FROM --platform=$BUILDPLATFORM alpine:3.19 AS tools
 ARG TALOSCTL_VERSION
-ARG KUBECTL_VERSION
-ARG HELM_VERSION
 ARG TARGETARCH
 RUN apk add --no-cache ca-certificates curl
 WORKDIR /out
@@ -55,24 +51,19 @@ WORKDIR /out
 RUN curl -fsSL -o talosctl \
       "https://github.com/siderolabs/talos/releases/download/${TALOSCTL_VERSION}/talosctl-linux-${TARGETARCH}" \
     && chmod 0755 talosctl
-# kubectl.
-RUN curl -fsSL -o kubectl \
-      "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${TARGETARCH}/kubectl" \
-    && chmod 0755 kubectl
-# helm (v3) — extract the single binary out of the release tarball.
-RUN curl -fsSL -o helm.tar.gz \
-      "https://get.helm.sh/helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz" \
-    && tar -xzf helm.tar.gz \
-    && mv "linux-${TARGETARCH}/helm" helm \
-    && chmod 0755 helm \
-    && rm -rf helm.tar.gz "linux-${TARGETARCH}"
 
 # --- Stage 2: the runtime image ----------------------------------------------
 FROM python:3.12-alpine AS runtime
 ARG ANSIBLE_CORE_VERSION
 ARG GYWADMIN_OCI_VERSION
 
-# ca-certificates is required for talosctl/kubectl/helm TLS and OCI SDK HTTPS.
+LABEL org.opencontainers.image.source=https://github.com/initialgyw/pub-dockerfiles
+LABEL org.opencontainers.image.title="ansible-talos"
+LABEL org.opencontainers.image.description="Built from /ansible-talos/Dockerfile in pub-dockerfiles"
+LABEL org.opencontainers.image.documentation=https://github.com/initialgyw/pub-dockerfiles/blob/main/ansible-talos/README.md
+LABEL org.opencontainers.image.version="1.13.5"
+
+# ca-certificates is required for talosctl TLS and OCI SDK HTTPS.
 # Added libffi for python cryptography wheel support (if needed by ansible/oci)
 RUN apk add --no-cache ca-certificates libffi
 
@@ -91,8 +82,6 @@ RUN apk add --no-cache --virtual .fetch-deps git \
 
 # The pinned CLIs from stage 1.
 COPY --from=tools /out/talosctl /usr/local/bin/talosctl
-COPY --from=tools /out/kubectl /usr/local/bin/kubectl
-COPY --from=tools /out/helm /usr/local/bin/helm
 
 # The OCI Vault helper CLIs come from the pip-installed gywadmin-oci package
 # (installed above): manage-vault / initialize-oci / update-github-secrets are on
