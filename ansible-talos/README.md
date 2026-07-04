@@ -3,7 +3,7 @@
 The credential-injecting container image that runs the Talos automation. It bundles `ansible-core` + `talosctl` (pinned to the cluster's Talos version).
 
 - **Image:** `ghcr.io/initialgyw/ansible-talos`
-- **Version:** `1.13.5` (equals the cluster's Talos version; see the
+- **Version:** `1.13.6.1` (equals the cluster's Talos version; see the
   `# VERSION=` header in the [`Dockerfile`](./Dockerfile))
 - **Source:** [`ansible-talos/Dockerfile`](./Dockerfile)
 
@@ -16,7 +16,7 @@ Dockerfile:
 
 | Tag | Platforms |
 |---|---|
-| `ghcr.io/initialgyw/ansible-talos:1.13.5` | `linux/amd64`, `linux/arm64` |
+| `ghcr.io/initialgyw/ansible-talos:1.13.6.1` | `linux/amd64`, `linux/arm64` |
 
 ## Pinned Tool Versions
 
@@ -40,7 +40,7 @@ Run a playbook by mounting the homelab repo at `/workspace`:
 ```sh
 docker run --rm -it \
   -v ${PWD}:/workspace \
-  ghcr.io/initialgyw/ansible-talos:1.13.5 \
+  ghcr.io/initialgyw/ansible-talos:1.13.6.1 \
   site.yaml
 ```
 
