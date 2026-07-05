@@ -1,11 +1,11 @@
 # ansible-talos
 
 The container image that runs the Talos automation. It bundles `ansible-core` +
-`talosctl` (pinned to the cluster's Talos version) + the `oracle.oci` Ansible
-collection (OCI Vault I/O).
+`talosctl` (pinned to the cluster's Talos version) + `kubectl` + the `oracle.oci`
+Ansible collection (OCI Vault I/O).
 
 - **Image:** `ghcr.io/initialgyw/ansible-talos`
-- **Version:** `1.13.6.2` (equals the cluster's Talos version; see the
+- **Version:** `1.13.6.3` (equals the cluster's Talos version; see the
   `# VERSION=` header in the [`Dockerfile`](./Dockerfile))
 - **Source:** [`ansible-talos/Dockerfile`](./Dockerfile)
 
@@ -32,6 +32,7 @@ YAML stdout is produced by ansible-core's built-in `default` callback with
 `callback_result_format = yaml` (`ansible/ansible.cfg`) — the old
 `community.general.yaml` callback was removed in community.general 12.0.
 
+
 ## Tags
 
 The CI workflow ([`.github/workflows/docker.yml`](../.github/workflows/docker.yml))
@@ -40,7 +41,7 @@ Dockerfile:
 
 | Tag | Platforms |
 |---|---|
-| `ghcr.io/initialgyw/ansible-talos:1.13.6.2` | `linux/amd64`, `linux/arm64` |
+| `ghcr.io/initialgyw/ansible-talos:1.13.6.3` | `linux/amd64`, `linux/arm64` |
 
 ## Pinned Tool Versions
 
@@ -53,6 +54,7 @@ templates are version-specific.
 |---|---|
 | `TALOSCTL_VERSION` | `v1.13.5` |
 | `ANSIBLE_CORE_VERSION` | `2.21.1` |
+| `KUBECTL_VERSION` | `v1.36.2` |
 
 ## Usage
 
@@ -64,7 +66,7 @@ Run a playbook by mounting the homelab repo at `/workspace`:
 ```sh
 docker run --rm -it \
   -v ${PWD}:/workspace \
-  ghcr.io/initialgyw/ansible-talos:1.13.6.2 \
+  ghcr.io/initialgyw/ansible-talos:1.13.6.3 \
   site.yaml
 ```
 
@@ -75,11 +77,15 @@ Override any pinned tool at build time with `--build-arg`, e.g.
 
 ```bash
 # Single-arch, local Apple-Silicon (arm64) host:
-docker build -t ghcr.io/initialgyw/ansible-talos:1.13.6.2 \
+docker build -t ghcr.io/initialgyw/ansible-talos:1.13.6.3 \
   -f ansible-talos/Dockerfile .
 
 # Multi-arch (arm64 + amd64), push to GHCR:
 docker buildx build --platform linux/arm64,linux/amd64 \
+<<<<<<< HEAD
+  -t ghcr.io/initialgyw/ansible-talos:1.13.6.3 \
+=======
   -t ghcr.io/initialgyw/ansible-talos:1.13.6.2 \
+>>>>>>> main
   -f ansible-talos/Dockerfile --push .
 ```
