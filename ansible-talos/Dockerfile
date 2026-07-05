@@ -1,20 +1,27 @@
-# VERSION=1.13.6.1
+# VERSION=1.13.6.2
 # syntax=docker/dockerfile:1
 #
-# ansible-talos — the credential-injecting container image that runs the Talos
-# automation. It bundles ansible-core + talosctl (PINNED to the cluster's Talos
-# version).
+# ansible-talos — the container image that runs the Talos automation. It bundles
+# ansible-core + talosctl (PINNED to the cluster's Talos version) + the
+# oracle.oci Ansible collection (OCI Vault I/O). It authenticates to OCI purely
+# from environment variables injected by the misc-scripts/ansible-talos.py
+# wrapper (no ~/.oci/config file); the playbooks materialize the API-key PEM
+# from OCI_USER_KEY_CONTENT to OCI_USER_KEY_FILE at start.
 #
-# Intended tag:  ghcr.io/initialgyw/ansible-talos:1.13.6.1  (== the Talos version)
+# YAML stdout is produced by ansible-core's built-in default callback with
+# `callback_result_format = yaml` (ansible/ansible.cfg); the old
+# community.general `yaml` callback was removed in community.general 12.0.
+#
+# Intended tag:  ghcr.io/initialgyw/ansible-talos:1.13.6.2  (== the Talos version)
 # Multi-arch:    built for linux/arm64 (Apple-Silicon host) and linux/amd64.
 #
 # Build (single-arch, local Apple-Silicon):
-#   docker build -t ghcr.io/initialgyw/ansible-talos:1.13.6.1 \
+#   docker build -t ghcr.io/initialgyw/ansible-talos:1.13.6.2 \
 #     -f ansible-talos/Dockerfile .
 #
 # Build (multi-arch, push):
 #   docker buildx build --platform linux/arm64,linux/amd64 \
-#     -t ghcr.io/initialgyw/ansible-talos:1.13.6.1 \
+#     -t ghcr.io/initialgyw/ansible-talos:1.13.6.2 \
 #     -f ansible-talos/Dockerfile --push .
 #
 # The misc-scripts/ansible-talos.py wrapper invokes this image with the homelab
@@ -44,19 +51,28 @@ LABEL org.opencontainers.image.source=https://github.com/initialgyw/pub-dockerfi
 LABEL org.opencontainers.image.title="ansible-talos"
 LABEL org.opencontainers.image.description="Built from /ansible-talos/Dockerfile in pub-dockerfiles"
 LABEL org.opencontainers.image.documentation=https://github.com/initialgyw/pub-dockerfiles/blob/main/ansible-talos/README.md
-LABEL org.opencontainers.image.version="1.13.6.1"
+LABEL org.opencontainers.image.version="1.13.6.2"
 
 # ca-certificates is required for talosctl TLS and OCI SDK HTTPS.
-# Added libffi for python cryptography wheel support (if needed by ansible/oci)
-RUN apk add --no-cache ca-certificates libffi
+# libffi + openssl are needed to build the cryptography wheel that the OCI
+# Python SDK depends on; the build toolchain is added/removed in one layer.
+RUN apk add --no-cache ca-certificates libffi openssl
 
-# Python deps: ansible-core (the playbook engine) + pyyaml (ansible-core needs it).
-RUN pip install --no-cache-dir \
+# Python deps:
+#   - ansible-core : the playbook engine
+#   - pyyaml       : required by ansible-core
+#   - oci          : the OCI Python SDK used by the oracle.oci collection for
+#                    all OCI Vault reads/writes (auth via OCI_* env vars).
+RUN apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev \
+    && pip install --no-cache-dir \
       "ansible-core==${ANSIBLE_CORE_VERSION}" \
-      "pyyaml>=6.0.0"
+      "pyyaml>=6.0.0" \
+      "oci" \
+    && apk del .build-deps
 
-# Install community.general for the yaml stdout callback plugin
-RUN ansible-galaxy collection install community.general
+# Ansible collections:
+#   - oracle.oci : OCI Vault secret get/create/update + KMS/identity facts
+RUN ansible-galaxy collection install oracle.oci
 
 # The pinned CLIs from stage 1.
 COPY --from=tools /out/talosctl /usr/local/bin/talosctl
