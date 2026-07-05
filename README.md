@@ -13,7 +13,7 @@ directory changes on `main`.
 |---|---|---|---|
 | `ghcr.io/initialgyw/git` | `3.22.2` | [git/README.md](./git/README.md) | [git/Dockerfile](./git/Dockerfile) |
 | `ghcr.io/initialgyw/opentofu` | `1.12.0` | [opentofu/README.md](./opentofu/README.md) | [opentofu/Dockerfile](./opentofu/Dockerfile) |
-| `ghcr.io/initialgyw/ansible-talos` | `1.13.6.2` | [ansible-talos/README.md](./ansible-talos/README.md) | [ansible-talos/Dockerfile](./ansible-talos/Dockerfile) |
+| `ghcr.io/initialgyw/ansible-talos` | `1.13.6.3` | [ansible-talos/README.md](./ansible-talos/README.md) | [ansible-talos/Dockerfile](./ansible-talos/Dockerfile) |
 
 ## Conventions
 
