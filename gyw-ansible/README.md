@@ -1,18 +1,18 @@
-# ansible-talos
+# gyw-ansible
 
 The container image that runs the Talos automation. It bundles `ansible-core` +
 `talosctl` (pinned to the cluster's Talos version) + `kubectl` + the `oracle.oci`
 Ansible collection (OCI Vault I/O).
 
-- **Image:** `ghcr.io/initialgyw/ansible-talos`
+- **Image:** `ghcr.io/initialgyw/gyw-ansible`
 - **Version:** `1.13.6.3` (equals the cluster's Talos version; see the
   `# VERSION=` header in the [`Dockerfile`](./Dockerfile))
-- **Source:** [`ansible-talos/Dockerfile`](./Dockerfile)
+- **Source:** [`gyw-ansible/Dockerfile`](./Dockerfile)
 
 ## Authentication
 
 The image authenticates to OCI **purely from environment variables** (no
-`~/.oci/config` file, no mounted key). The `misc-scripts/ansible-talos.py`
+`~/.oci/config` file, no mounted key). The `misc-scripts/gyw-ansible.py`
 wrapper parses `script_outputs/initialize-oci-summary.json` and injects:
 
 - OCI SDK auth (read by `oracle.oci` / the OCI Python SDK): `OCI_TENANCY`,
@@ -41,7 +41,7 @@ Dockerfile:
 
 | Tag | Platforms |
 |---|---|
-| `ghcr.io/initialgyw/ansible-talos:1.13.6.3` | `linux/amd64`, `linux/arm64` |
+| `ghcr.io/initialgyw/gyw-ansible:1.13.6.3` | `linux/amd64`, `linux/arm64` |
 
 ## Pinned Tool Versions
 
@@ -59,14 +59,14 @@ templates are version-specific.
 ## Usage
 
 The entrypoint is `ansible-playbook` (default `CMD` is `--version`), and the
-working directory is `/workspace/ansible`. The `misc-scripts/ansible-talos.py` wrapper invokes this image with the homelab repo mounted at `/workspace`.
+working directory is `/workspace/ansible`. The `misc-scripts/gyw-ansible.py` wrapper invokes this image with the homelab repo mounted at `/workspace`.
 
 Run a playbook by mounting the homelab repo at `/workspace`:
 
 ```sh
 docker run --rm -it \
   -v ${PWD}:/workspace \
-  ghcr.io/initialgyw/ansible-talos:1.13.6.3 \
+  ghcr.io/initialgyw/gyw-ansible:1.13.6.3 \
   site.yaml
 ```
 
@@ -77,15 +77,15 @@ Override any pinned tool at build time with `--build-arg`, e.g.
 
 ```bash
 # Single-arch, local Apple-Silicon (arm64) host:
-docker build -t ghcr.io/initialgyw/ansible-talos:1.13.6.3 \
-  -f ansible-talos/Dockerfile .
+docker build -t ghcr.io/initialgyw/gyw-ansible:1.13.6.3 \
+  -f gyw-ansible/Dockerfile .
 
 # Multi-arch (arm64 + amd64), push to GHCR:
 docker buildx build --platform linux/arm64,linux/amd64 \
 <<<<<<< HEAD
-  -t ghcr.io/initialgyw/ansible-talos:1.13.6.3 \
+  -t ghcr.io/initialgyw/gyw-ansible:1.13.6.3 \
 =======
-  -t ghcr.io/initialgyw/ansible-talos:1.13.6.2 \
+  -t ghcr.io/initialgyw/gyw-ansible:1.13.6.2 \
 >>>>>>> main
-  -f ansible-talos/Dockerfile --push .
+  -f gyw-ansible/Dockerfile --push .
 ```

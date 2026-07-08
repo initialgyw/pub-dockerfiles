@@ -1,10 +1,10 @@
 # VERSION=1.13.6.3
 # syntax=docker/dockerfile:1
 #
-# ansible-talos — the container image that runs the Talos automation. It bundles
+# gyw-ansible — the container image that runs the Talos automation. It bundles
 # ansible-core + talosctl (PINNED to the cluster's Talos version) + kubectl + the
 # oracle.oci Ansible collection (OCI Vault I/O). It authenticates to OCI purely
-# from environment variables injected by the misc-scripts/ansible-talos.py
+# from environment variables injected by the misc-scripts/gyw-ansible.py
 # wrapper (no ~/.oci/config file); the playbooks materialize the API-key PEM
 # from OCI_USER_KEY_CONTENT to OCI_USER_KEY_FILE at start.
 #
@@ -12,19 +12,19 @@
 # `callback_result_format = yaml` (ansible/ansible.cfg); the old
 # community.general `yaml` callback was removed in community.general 12.0.
 #
-# Intended tag:  ghcr.io/initialgyw/ansible-talos:1.13.6.3  (== the Talos version)
+# Intended tag:  ghcr.io/initialgyw/gyw-ansible:1.13.6.3  (== the Talos version)
 # Multi-arch:    built for linux/arm64 (Apple-Silicon host) and linux/amd64.
 #
 # Build (single-arch, local Apple-Silicon):
-#   docker build -t ghcr.io/initialgyw/ansible-talos:1.13.6.3 \
-#     -f ansible-talos/Dockerfile .
+#   docker build -t ghcr.io/initialgyw/gyw-ansible:1.13.6.3 \
+#     -f gyw-ansible/Dockerfile .
 #
 # Build (multi-arch, push):
 #   docker buildx build --platform linux/arm64,linux/amd64 \
-#     -t ghcr.io/initialgyw/ansible-talos:1.13.6.3 \
-#     -f ansible-talos/Dockerfile --push .
+#     -t ghcr.io/initialgyw/gyw-ansible:1.13.6.3 \
+#     -f gyw-ansible/Dockerfile --push .
 #
-# The misc-scripts/ansible-talos.py wrapper invokes this image with the homelab
+# The misc-scripts/gyw-ansible.py wrapper invokes this image with the homelab
 # repo mounted at /workspace.
 
 # --- Pinned tool versions ----------------------------------------------------
@@ -55,9 +55,9 @@ FROM python:3.12-alpine AS runtime
 ARG ANSIBLE_CORE_VERSION
 
 LABEL org.opencontainers.image.source=https://github.com/initialgyw/pub-dockerfiles
-LABEL org.opencontainers.image.title="ansible-talos"
-LABEL org.opencontainers.image.description="Built from /ansible-talos/Dockerfile in pub-dockerfiles"
-LABEL org.opencontainers.image.documentation=https://github.com/initialgyw/pub-dockerfiles/blob/main/ansible-talos/README.md
+LABEL org.opencontainers.image.title="gyw-ansible"
+LABEL org.opencontainers.image.description="Built from /gyw-ansible/Dockerfile in pub-dockerfiles"
+LABEL org.opencontainers.image.documentation=https://github.com/initialgyw/pub-dockerfiles/blob/main/gyw-ansible/README.md
 LABEL org.opencontainers.image.version="1.13.6.3"
 
 # ca-certificates is required for talosctl TLS and OCI SDK HTTPS.
