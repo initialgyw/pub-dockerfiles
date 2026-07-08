@@ -35,26 +35,26 @@ jobs:
               - 'git/**'
             opentofu:
               - 'opentofu/**'
-            ansible-talos:
-              - 'ansible-talos/**'
+            gyw-ansible:
+              - 'gyw-ansible/**'
 
       - name: Build component matrix
         id: set-matrix
         env:
           GIT_CHANGED: ${{ steps.filter.outputs.git }}
           OPENTOFU_CHANGED: ${{ steps.filter.outputs.opentofu }}
-          ANSIBLE_TALOS_CHANGED: ${{ steps.filter.outputs.ansible-talos }}
+          GYW_ANSIBLE_CHANGED: ${{ steps.filter.outputs.gyw-ansible }}
         run: |
           set -euo pipefail
 
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            components='["git", "opentofu", "ansible-talos"]'
+            components='["git", "opentofu", "gyw-ansible"]'
           else
             components="$(
               {
                 [[ "${GIT_CHANGED}" == "true" ]] && printf '%s\n' "git"
                 [[ "${OPENTOFU_CHANGED}" == "true" ]] && printf '%s\n' "opentofu"
-                [[ "${ANSIBLE_TALOS_CHANGED}" == "true" ]] && printf '%s\n' "ansible-talos"
+                [[ "${GYW_ANSIBLE_CHANGED}" == "true" ]] && printf '%s\n' "gyw-ansible"
                 true
               } | jq --raw-input . | jq --slurp --compact-output .
             )"
