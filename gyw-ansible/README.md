@@ -5,7 +5,7 @@ The container image that runs the Talos automation. It bundles `ansible-core` +
 Ansible collection (OCI Vault I/O).
 
 - **Image:** `ghcr.io/initialgyw/gyw-ansible`
-- **Version:** `1.13.6.3` (equals the cluster's Talos version; see the
+- **Version:** `2.21.1.0` (tracks the ansible-core version with a .0 revision suffix; see the
   `# VERSION=` header in the [`Dockerfile`](./Dockerfile))
 - **Source:** [`gyw-ansible/Dockerfile`](./Dockerfile)
 
@@ -41,7 +41,7 @@ Dockerfile:
 
 | Tag | Platforms |
 |---|---|
-| `ghcr.io/initialgyw/gyw-ansible:1.13.6.3` | `linux/amd64`, `linux/arm64` |
+| `ghcr.io/initialgyw/gyw-ansible:2.21.1.0` | `linux/amd64`, `linux/arm64` |
 
 ## Pinned Tool Versions
 
@@ -66,7 +66,7 @@ Run a playbook by mounting the homelab repo at `/workspace`:
 ```sh
 docker run --rm -it \
   -v ${PWD}:/workspace \
-  ghcr.io/initialgyw/gyw-ansible:1.13.6.3 \
+  ghcr.io/initialgyw/gyw-ansible:2.21.1.0 \
   site.yaml
 ```
 
@@ -77,15 +77,11 @@ Override any pinned tool at build time with `--build-arg`, e.g.
 
 ```bash
 # Single-arch, local Apple-Silicon (arm64) host:
-docker build -t ghcr.io/initialgyw/gyw-ansible:1.13.6.3 \
+docker build -t ghcr.io/initialgyw/gyw-ansible:2.21.1.0 \
   -f gyw-ansible/Dockerfile .
 
 # Multi-arch (arm64 + amd64), push to GHCR:
 docker buildx build --platform linux/arm64,linux/amd64 \
-<<<<<<< HEAD
-  -t ghcr.io/initialgyw/gyw-ansible:1.13.6.3 \
-=======
-  -t ghcr.io/initialgyw/gyw-ansible:1.13.6.2 \
->>>>>>> main
+  -t ghcr.io/initialgyw/gyw-ansible:2.21.1.0 \
   -f gyw-ansible/Dockerfile --push .
 ```

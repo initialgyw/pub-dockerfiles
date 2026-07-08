@@ -1,4 +1,4 @@
-# VERSION=1.13.6.3
+# VERSION=2.21.1.0
 # syntax=docker/dockerfile:1
 #
 # gyw-ansible — the container image that runs the Talos automation. It bundles
@@ -12,16 +12,16 @@
 # `callback_result_format = yaml` (ansible/ansible.cfg); the old
 # community.general `yaml` callback was removed in community.general 12.0.
 #
-# Intended tag:  ghcr.io/initialgyw/gyw-ansible:1.13.6.3  (== the Talos version)
+# Intended tag:  ghcr.io/initialgyw/gyw-ansible:2.21.1.0  (== the ansible-core version + revision)
 # Multi-arch:    built for linux/arm64 (Apple-Silicon host) and linux/amd64.
 #
 # Build (single-arch, local Apple-Silicon):
-#   docker build -t ghcr.io/initialgyw/gyw-ansible:1.13.6.3 \
+#   docker build -t ghcr.io/initialgyw/gyw-ansible:2.21.1.0 \
 #     -f gyw-ansible/Dockerfile .
 #
 # Build (multi-arch, push):
 #   docker buildx build --platform linux/arm64,linux/amd64 \
-#     -t ghcr.io/initialgyw/gyw-ansible:1.13.6.3 \
+#     -t ghcr.io/initialgyw/gyw-ansible:2.21.1.0 \
 #     -f gyw-ansible/Dockerfile --push .
 #
 # The misc-scripts/gyw-ansible.py wrapper invokes this image with the homelab
@@ -58,7 +58,7 @@ LABEL org.opencontainers.image.source=https://github.com/initialgyw/pub-dockerfi
 LABEL org.opencontainers.image.title="gyw-ansible"
 LABEL org.opencontainers.image.description="Built from /gyw-ansible/Dockerfile in pub-dockerfiles"
 LABEL org.opencontainers.image.documentation=https://github.com/initialgyw/pub-dockerfiles/blob/main/gyw-ansible/README.md
-LABEL org.opencontainers.image.version="1.13.6.3"
+LABEL org.opencontainers.image.version="2.21.1.0"
 
 # ca-certificates is required for talosctl TLS and OCI SDK HTTPS.
 # libffi + openssl are needed to build the cryptography wheel that the OCI
