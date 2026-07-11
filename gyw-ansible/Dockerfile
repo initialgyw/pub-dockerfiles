@@ -1,9 +1,10 @@
-# VERSION=2.21.1.0
+# VERSION=2.21.1.1
 # syntax=docker/dockerfile:1
 #
 # gyw-ansible — the container image that runs the Talos automation. It bundles
 # ansible-core + talosctl (PINNED to the cluster's Talos version) + kubectl + the
-# oracle.oci Ansible collection (OCI Vault I/O). It authenticates to OCI purely
+# oracle.oci Ansible collection (OCI Vault I/O) + yamllint + ansible-lint (for
+# linting the playbooks/roles). It authenticates to OCI purely
 # from environment variables injected by the misc-scripts/gyw-ansible.py
 # wrapper (no ~/.oci/config file); the playbooks materialize the API-key PEM
 # from OCI_USER_KEY_CONTENT to OCI_USER_KEY_FILE at start.
@@ -12,16 +13,16 @@
 # `callback_result_format = yaml` (ansible/ansible.cfg); the old
 # community.general `yaml` callback was removed in community.general 12.0.
 #
-# Intended tag:  ghcr.io/initialgyw/gyw-ansible:2.21.1.0  (== the ansible-core version + revision)
+# Intended tag:  ghcr.io/initialgyw/gyw-ansible:2.21.1.1  (== the ansible-core version + revision)
 # Multi-arch:    built for linux/arm64 (Apple-Silicon host) and linux/amd64.
 #
 # Build (single-arch, local Apple-Silicon):
-#   docker build -t ghcr.io/initialgyw/gyw-ansible:2.21.1.0 \
+#   docker build -t ghcr.io/initialgyw/gyw-ansible:2.21.1.1 \
 #     -f gyw-ansible/Dockerfile .
 #
 # Build (multi-arch, push):
 #   docker buildx build --platform linux/arm64,linux/amd64 \
-#     -t ghcr.io/initialgyw/gyw-ansible:2.21.1.0 \
+#     -t ghcr.io/initialgyw/gyw-ansible:2.21.1.1 \
 #     -f gyw-ansible/Dockerfile --push .
 #
 # The misc-scripts/gyw-ansible.py wrapper invokes this image with the homelab
@@ -58,23 +59,30 @@ LABEL org.opencontainers.image.source=https://github.com/initialgyw/pub-dockerfi
 LABEL org.opencontainers.image.title="gyw-ansible"
 LABEL org.opencontainers.image.description="Built from /gyw-ansible/Dockerfile in pub-dockerfiles"
 LABEL org.opencontainers.image.documentation=https://github.com/initialgyw/pub-dockerfiles/blob/main/gyw-ansible/README.md
-LABEL org.opencontainers.image.version="2.21.1.0"
+LABEL org.opencontainers.image.version="2.21.1.1"
 
 # ca-certificates is required for talosctl TLS and OCI SDK HTTPS.
 # libffi + openssl are needed to build the cryptography wheel that the OCI
 # Python SDK depends on; the build toolchain is added/removed in one layer.
-RUN apk add --no-cache ca-certificates libffi openssl
+# git lets ansible-lint auto-discover files and honor .gitignore in the mounted
+# /workspace checkout (and silences its "git not found" warning).
+RUN apk add --no-cache ca-certificates libffi openssl git
 
 # Python deps:
 #   - ansible-core : the playbook engine
 #   - pyyaml       : required by ansible-core
 #   - oci          : the OCI Python SDK used by the oracle.oci collection for
 #                    all OCI Vault reads/writes (auth via OCI_* env vars).
+#   - yamllint     : YAML linter for the playbooks/roles.
+#   - ansible-lint : Ansible linter; keeps ansible-core pinned (its floor is
+#                    2.16.14, satisfied by ${ANSIBLE_CORE_VERSION}).
 RUN apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev \
     && pip install --no-cache-dir \
       "ansible-core==${ANSIBLE_CORE_VERSION}" \
       "pyyaml>=6.0.0" \
       "oci" \
+      "yamllint" \
+      "ansible-lint" \
     && apk del .build-deps
 
 # Ansible collections:

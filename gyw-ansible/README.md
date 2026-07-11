@@ -2,10 +2,11 @@
 
 The container image that runs the Talos automation. It bundles `ansible-core` +
 `talosctl` (pinned to the cluster's Talos version) + `kubectl` + the `oracle.oci`
-Ansible collection (OCI Vault I/O).
+Ansible collection (OCI Vault I/O) + `yamllint` + `ansible-lint` (for linting the
+playbooks/roles).
 
 - **Image:** `ghcr.io/initialgyw/gyw-ansible`
-- **Version:** `2.21.1.0` (tracks the ansible-core version with a .0 revision suffix; see the
+- **Version:** `2.21.1.1` (tracks the ansible-core version with a revision suffix; see the
   `# VERSION=` header in the [`Dockerfile`](./Dockerfile))
 - **Source:** [`gyw-ansible/Dockerfile`](./Dockerfile)
 
@@ -41,7 +42,7 @@ Dockerfile:
 
 | Tag | Platforms |
 |---|---|
-| `ghcr.io/initialgyw/gyw-ansible:2.21.1.0` | `linux/amd64`, `linux/arm64` |
+| `ghcr.io/initialgyw/gyw-ansible:2.21.1.1` | `linux/amd64`, `linux/arm64` |
 
 ## Pinned Tool Versions
 
@@ -66,8 +67,23 @@ Run a playbook by mounting the homelab repo at `/workspace`:
 ```sh
 docker run --rm -it \
   -v ${PWD}:/workspace \
-  ghcr.io/initialgyw/gyw-ansible:2.21.1.0 \
+  ghcr.io/initialgyw/gyw-ansible:2.21.1.1 \
   site.yaml
+```
+
+### Linting
+
+`yamllint` and `ansible-lint` are bundled. Override the entrypoint to run them
+against the mounted repo:
+
+```sh
+docker run --rm -v ${PWD}:/workspace \
+  --entrypoint yamllint ghcr.io/initialgyw/gyw-ansible:2.21.1.1 \
+  roles/
+
+docker run --rm -v ${PWD}:/workspace \
+  --entrypoint ansible-lint ghcr.io/initialgyw/gyw-ansible:2.21.1.1 \
+  playbooks/site.yaml
 ```
 
 ## Building Locally
@@ -77,11 +93,11 @@ Override any pinned tool at build time with `--build-arg`, e.g.
 
 ```bash
 # Single-arch, local Apple-Silicon (arm64) host:
-docker build -t ghcr.io/initialgyw/gyw-ansible:2.21.1.0 \
+docker build -t ghcr.io/initialgyw/gyw-ansible:2.21.1.1 \
   -f gyw-ansible/Dockerfile .
 
 # Multi-arch (arm64 + amd64), push to GHCR:
 docker buildx build --platform linux/arm64,linux/amd64 \
-  -t ghcr.io/initialgyw/gyw-ansible:2.21.1.0 \
+  -t ghcr.io/initialgyw/gyw-ansible:2.21.1.1 \
   -f gyw-ansible/Dockerfile --push .
 ```
